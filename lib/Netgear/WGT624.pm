@@ -5,7 +5,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use LWP::UserAgent;
 
@@ -23,12 +23,15 @@ sub new {
 }
 
 
-###### BEGIN Private methods protected using closures.
-my $query_device = sub {
+###### BEGIN Private methods.
 
+# _query_device - Wraps another function that uses LWP to query
+# router.  This method just sorts the results into an internal 
+# associative array.
+sub _query_device {
     my $self = shift;
 
-    my $resref = $self->fetch_html;
+    my $resref = $self->_fetch_html;
 
     my @vals = grep( /<span class="ttext">/, @$resref );
 
@@ -40,6 +43,7 @@ my $query_device = sub {
 	}
     }
 
+    # Put array elements into hash based on position.
     $self->{STATS} = {
 	WAN_Status      => $retvals[0],
 	WAN_TxPkts      => $retvals[1],
@@ -66,43 +70,13 @@ my $query_device = sub {
 	WLAN_UpTime     => $retvals[20],
     };
 
-};
-
-###### END Private methods protected using closures.
-
-sub username($) {
-    my $self = shift;
-    if (@_) { $self->{USERNAME} = shift; }
-    return $self->{USERNAME};
 }
 
-sub password($) {
-    my $self = shift;
-    if (@_) { $self->{PASSWORD} = shift; }
-    return $self->{PASSWORD};
-}
-
-sub address($) {
-    my $self = shift;
-    if (@_) { $self->{ADDRESS} = shift; }
-    return $self->{ADDRESS};
-}
-
-sub getStatistic($$) {
-    my $self = shift;
-    my $param = shift;
-
-    # Refresh our data structure containing the TxRate.
-    $self->$query_device;
-
-    return $self->{STATS}->{$param};
-}
-
-# get_server_address - Make sure that address is really a 
+# _get_server_address - Make sure that address is really a 
 # server address, i.e., chop off prepending http:// and 
 # slashes if found.  Return the default port of 80
 # for the netgear device.
-sub get_server_address {
+sub _get_server_address {
     my $self = shift;
     
     my $address = $self->{ADDRESS};
@@ -114,15 +88,15 @@ sub get_server_address {
     return $address;
 }
 
-# fetch_html - gets the HTML from Netgear router using LWP.
-sub fetch_html {
+# _fetch_html - gets the HTML from Netgear router using LWP.
+sub _fetch_html {
     my $self = shift;
 
     my $username = $self->{USERNAME};
     my $password = $self->{PASSWORD};
     my $address  = $self->{ADDRESS};
 
-    my $url = $self->make_url;
+    my $url = $self->_make_url;
 
     # Use the LWP library to download the HTML page into array @html.
     my $ua = LWP::UserAgent->new();
@@ -131,7 +105,7 @@ sub fetch_html {
 
     $ua->env_proxy;  # Use proxy environment vars, if defined.
 
-    $ua->credentials($self->get_server_address,
+    $ua->credentials($self->_get_server_address,
 		     'WGT624',
 		     $username,
 		     $password);
@@ -149,8 +123,8 @@ sub fetch_html {
     return \@html;
 }
 
-# make_url - generates the URL from input address.
-sub make_url {
+# _make_url - generates the URL from input address.
+sub _make_url {
     my $self = shift;
 
     my $url = $self->{ADDRESS};
@@ -169,6 +143,50 @@ sub make_url {
     return $url;
 }
 
+###### END Private methods
+
+sub username($) {
+    my $self = shift;
+
+    if (@_) { $self->{USERNAME} = shift; }
+    return $self->{USERNAME};
+}
+
+sub password($) {
+    my $self = shift;
+
+    if (@_) { $self->{PASSWORD} = shift; }
+    return $self->{PASSWORD};
+}
+
+sub address($) {
+    my $self = shift;
+
+    if (@_) { $self->{ADDRESS} = shift; }
+    return $self->{ADDRESS};
+}
+
+sub getStatus($$) {
+    my $self = shift;
+    my $param = shift;
+
+    # Refresh our data structure containing the TxRate.
+    $self->_query_device;
+
+    return $self->{STATS}->{$param};
+}
+
+# getStatistic - this method is deprecated, and only 
+# included to maintain compatibility with the now-removed
+# get-wgt624-statistics test script.  It will be removed
+# in future versions.
+sub getStatistic($$) {
+    my $self = shift;
+    my $param = shift;
+
+    return $self->getStatus($param);
+}
+
 1;
 
 __END__
@@ -182,26 +200,91 @@ for state information.
 
 use Netgear::WGT624;
 
+my $wgt624 = Netgear::WGT624->new();
+
+$wgt624->username('myusername');
+
+$wgt624->password('mypassword');
+
+$wgt624->address('router-address');
+
+my $retval = $wgt624->getStatus($element);
+
+See the script distributed with this program, L<get-wgt624-status>,
+for another example.
+
 =head1 DESCRIPTION
 
 Netgear::WGT624 is the library that supports programs that query the
 Netgear WGT624 for state information over HTTP.
 
-=head2 EXPORT
+=head1 METHODS
+
+=over 
+
+=item $wgt624->username($username)
+
+=item $wgt624->username()
+
+Returns the username of the active user if called with no parameters,
+or sets it if a value is passed to this method.
+
+=item $wgt624->password($password)
+
+=item $wgt624->password()
+
+Returns the password of the active user if called with no parameters,
+or sets it if a value is passed to this method.
+
+=item $wgt624->address($address)
+
+=item $wgt624->address()
+
+Returns the address of the router if called with no parameters, or
+sets it if a value is passed to this method.  The value that is stored
+can be an IP address in dotted-octet format, or it can be a hostname.
+
+=item $wgt624->getStatus($element)
+
+Returns the value of the element passed to this method as the only
+parameter, provided that WGT624 is able to contact the router with the
+credentials and address specified above.
+
+=back
+
+=head1 LISTABLE ELEMENTS FROM WGT624
+
+The following may be listed in the element field for output to the console:
+
+=over
+
+WAN_Status, WAN_TxPkts, WAN_RxPkts, WAN_Collisions, WAN_TxRate, WAN_RxRate,
+WAN_UpTime, LAN_Status, LAN_TxPkts, LAN_RxPkts, LAN_Collisions, LAN_TxRate,
+LAN_RxRate, LAN_UpTime, WLAN_Status, WLAN_TxPkts, WLAN_RxPkts, WLAN_Collisions,
+WLAN_TxRate, WLAN_RxRate, WLAN_UpTime
+
+=back
+
+=head1 EXPORT
 
 None by default.
 
 =head1 SEE ALSO
 
-The man page for get-wgt624-statistics.
+The perldoc for L<get-wgt624-status>, and the source code of
+get-wgt624-status, which uses this library.
 
-The author of this software has his web page at http://justin.phq.org/.
+The home page for this software at http://justin.phq.org/netgear/.
 
 =head1 AUTHOR
 
 Justin S. Leitgeb, E<lt>justin@phq.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
+
+This program is made available under the Artistic license, see the
+README file in the package with which it was distributed for more
+information.
 
 Copyright (C) 2006 by Justin S. Leitgeb
 
