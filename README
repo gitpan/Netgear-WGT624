@@ -1,0 +1,33 @@
+Netgear version 0.03
+====================
+
+This project contains scripts and libraries that will parse the HTML
+output information from a Netgear WGT624 router.  Basically, with
+these libraries you can output useful information, like the packet
+collisions or transmitted bits per second to a form that is useful for
+rrdtool or mrtg (in order to graph network utilization).
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+	LWP
+	Getopt::Long
+	Pod::Usage
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2006 by Justin S. Leitgeb
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.6 or,
+at your option, any later version of Perl 5 you may have available.

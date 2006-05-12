@@ -1,0 +1,15 @@
+Revision history for Perl extension Netgear::WGT624.
+
+0.03 Thu May 11 15:11:39 2006
+	- Adds better functionality for Windows systems.
+	- More test cases and robustness for router addresses
+	  in different formats.	
+	
+
+0.02 No date information entered.
+	- Change information not entered.
+
+0.01  Sun Mar 26 17:08:45 2006
+	- original version; created by h2xs 1.23 with options
+		-X -n Netgear::WGT624
+
